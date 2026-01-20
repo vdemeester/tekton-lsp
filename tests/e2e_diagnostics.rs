@@ -180,27 +180,26 @@ spec:
     /// When: Client opens the document
     /// Then: Server publishes type error diagnostic
     #[tokio::test]
-    #[ignore] // Enable in Task 3
     async fn test_type_mismatch() {
-        // let (client, server) = create_test_lsp().await;
+        let (client, server) = create_test_lsp().await;
 
-        // let invalid_pipeline = r#"
-        // apiVersion: tekton.dev/v1
-        // kind: Pipeline
-        // metadata:
-        //   name: test
-        // spec:
-        //   tasks: "should-be-array"  # ERROR: Wrong type
-        // "#;
+        let invalid_pipeline = r#"
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test
+spec:
+  tasks: "should-be-array"  # ERROR: Wrong type
+"#;
 
-        // client.initialize().await;
-        // client.did_open("file:///test/pipeline.yaml", invalid_pipeline).await;
+        client.initialize().await;
+        client.did_open("file:///test/pipeline.yaml", invalid_pipeline).await;
 
-        // let diagnostics = server.receive_diagnostics().await;
-        // assert!(diagnostics.len() > 0);
+        let diagnostics = server.receive_diagnostics().await;
+        assert!(diagnostics.len() > 0);
 
-        // let error = &diagnostics[0];
-        // assert!(error.message.contains("type") || error.message.contains("array"));
+        let error = &diagnostics[0];
+        assert!(error.message.contains("type") || error.message.contains("array") || error.message.contains("sequence"));
     }
 
     /// Test Case 5: Incremental Update Clears Error
