@@ -1,20 +1,6 @@
-# Binaries
-/tekton-lsp
-/bin/tekton-lsp
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool
-*.out
-
-# Go workspace file
-go.work
+# Rust
+/target
+Cargo.lock
 
 # IDE
 .vscode/
@@ -22,11 +8,12 @@ go.work
 *.swp
 *.swo
 *~
+.direnv/
 
 # OS
 .DS_Store
 Thumbs.db
 
 # Build artifacts
-bin/
-dist/
+/bin
+/dist
