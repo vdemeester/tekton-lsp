@@ -1,5 +1,6 @@
 # Binaries
-tekton-lsp
+/tekton-lsp
+/bin/tekton-lsp
 *.exe
 *.exe~
 *.dll
