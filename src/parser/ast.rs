@@ -1,4 +1,3 @@
-use serde_yaml::Value;
 use std::collections::HashMap;
 use tower_lsp::lsp_types::{Position, Range};
 
