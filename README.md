@@ -22,7 +22,7 @@
 ### Prerequisites
 
 - Rust 1.70+ (or use provided Nix environment)
-- A compatible editor (VS Code, Neovim, Emacs, etc.)
+- A compatible editor (VS Code, Neovim, Emacs, Claude Code, etc.)
 
 ### Build from Source
 
@@ -48,6 +48,20 @@ nix-shell
 cargo build
 cargo test
 ```
+
+### Editor Setup
+
+See **[docs/SETUP.md](docs/SETUP.md)** for detailed setup instructions for:
+- **VS Code** - Manual configuration and future extension
+- **Emacs** - Using eglot (built-in Emacs 29+)
+- **Neovim** - Using nvim-lspconfig
+- **Claude Code** - LSP integration via MCP
+
+Quick editor test:
+1. Build the LSP server (`cargo build --release`)
+2. Configure your editor (see SETUP.md)
+3. Open a Tekton YAML file with errors
+4. See diagnostics appear automatically!
 
 ## Development
 
