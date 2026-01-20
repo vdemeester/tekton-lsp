@@ -45,9 +45,32 @@ impl TektonValidator {
     /// Validate Pipeline-specific rules
     fn validate_pipeline(&self, doc: &YamlDocument, diagnostics: &mut Vec<Diagnostic>) {
         if let Some(spec_node) = doc.root.get("spec") {
-            if let Some(tasks_node) = spec_node.get("tasks") {
-                use crate::parser::NodeValue;
+            use crate::parser::NodeValue;
 
+            // Known fields in Pipeline spec
+            let known_fields = ["tasks", "params", "workspaces", "results", "finally", "description"];
+
+            // Check for unknown fields in spec
+            if let NodeValue::Mapping(ref spec_map) = spec_node.value {
+                for (field_name, field_node) in spec_map {
+                    if !known_fields.contains(&field_name.as_str()) {
+                        diagnostics.push(Diagnostic {
+                            range: field_node.range,
+                            severity: Some(DiagnosticSeverity::WARNING),
+                            code: None,
+                            code_description: None,
+                            source: Some("tekton-lsp".to_string()),
+                            message: format!("Unknown field '{}' in Pipeline spec", field_name),
+                            related_information: None,
+                            tags: None,
+                            data: None,
+                        });
+                    }
+                }
+            }
+
+            // Validate tasks field
+            if let Some(tasks_node) = spec_node.get("tasks") {
                 // Check if tasks has the correct type (should be sequence/array)
                 match &tasks_node.value {
                     NodeValue::Sequence(ref tasks) => {

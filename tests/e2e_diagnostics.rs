@@ -366,29 +366,28 @@ spec:
     /// When: Client opens the document
     /// Then: Server publishes warning (not error) for unknown field
     #[tokio::test]
-    #[ignore] // Enable in Task 3
     async fn test_unknown_field_warning() {
-        // let (client, server) = create_test_lsp().await;
+        let (client, server) = create_test_lsp().await;
 
-        // let pipeline_with_typo = r#"
-        // apiVersion: tekton.dev/v1
-        // kind: Pipeline
-        // metadata:
-        //   name: test
-        // spec:
-        //   taskz: []  # WARN: Unknown field (typo: 'tasks' vs 'taskz')
-        // "#;
+        let pipeline_with_typo = r#"
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test
+spec:
+  taskz: []  # WARN: Unknown field (typo: 'tasks' vs 'taskz')
+"#;
 
-        // client.initialize().await;
-        // client.did_open("file:///test/pipeline.yaml", pipeline_with_typo).await;
+        client.initialize().await;
+        client.did_open("file:///test/pipeline.yaml", pipeline_with_typo).await;
 
-        // let diagnostics = server.receive_diagnostics().await;
-        // let warnings: Vec<_> = diagnostics.iter()
-        //     .filter(|d| d.severity == Some(DiagnosticSeverity::WARNING))
-        //     .collect();
+        let diagnostics = server.receive_diagnostics().await;
+        let warnings: Vec<_> = diagnostics.iter()
+            .filter(|d| d.severity == Some(DiagnosticSeverity::WARNING))
+            .collect();
 
-        // assert!(warnings.len() > 0);
-        // assert!(warnings[0].message.contains("taskz") || warnings[0].message.contains("unknown"));
+        assert!(warnings.len() > 0, "Should have at least one warning");
+        assert!(warnings[0].message.contains("taskz") || warnings[0].message.contains("unknown"));
     }
 
     /// Test Case 8: Task Reference Validation
