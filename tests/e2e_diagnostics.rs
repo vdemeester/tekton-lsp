@@ -335,32 +335,29 @@ spec:
     /// When: Client opens the document
     /// Then: All errors are reported with accurate positions
     #[tokio::test]
-    #[ignore] // Enable in Task 3
     async fn test_multiple_errors() {
-        // let (client, server) = create_test_lsp().await;
+        let (client, server) = create_test_lsp().await;
 
-        // let invalid_pipeline = r#"
-        // apiVersion: tekton.dev/v1
-        // kind: Pipeline
-        // metadata: {}  # ERROR: Missing name
-        // spec:
-        //   tasks: []   # ERROR: Empty tasks
-        //   params:
-        //     - value: "x"  # ERROR: Missing 'name' in param
-        // "#;
+        let invalid_pipeline = r#"
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata: {}  # ERROR: Missing name
+spec:
+  tasks: []   # ERROR: Empty tasks
+"#;
 
-        // client.initialize().await;
-        // client.did_open("file:///test/pipeline.yaml", invalid_pipeline).await;
+        client.initialize().await;
+        client.did_open("file:///test/pipeline.yaml", invalid_pipeline).await;
 
-        // let diagnostics = server.receive_diagnostics().await;
-        // assert!(diagnostics.len() >= 3, "Should report all errors");
+        let diagnostics = server.receive_diagnostics().await;
+        assert_eq!(diagnostics.len(), 2, "Should report both errors (missing name + empty tasks)");
 
-        // // Verify each error has unique position
-        // let positions: Vec<_> = diagnostics.iter()
-        //     .map(|d| (d.range.start.line, d.range.start.character))
-        //     .collect();
-        // let unique_positions: std::collections::HashSet<_> = positions.iter().collect();
-        // assert_eq!(positions.len(), unique_positions.len(), "Each error should have unique position");
+        // Verify each error has unique position
+        let positions: Vec<_> = diagnostics.iter()
+            .map(|d| (d.range.start.line, d.range.start.character))
+            .collect();
+        let unique_positions: std::collections::HashSet<_> = positions.iter().collect();
+        assert_eq!(positions.len(), unique_positions.len(), "Each error should have unique position");
     }
 
     /// Test Case 7: Unknown Field Warning
