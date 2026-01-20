@@ -4,6 +4,7 @@ use crate::parser::YamlDocument;
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
 /// Validator for Tekton resources
+#[derive(Debug, Clone)]
 pub struct TektonValidator;
 
 impl TektonValidator {
@@ -128,7 +129,10 @@ kind: Pipeline
 metadata:
   name: test-pipeline
 spec:
-  tasks: []
+  tasks:
+    - name: build
+      taskRef:
+        name: some-task
 "#;
 
         let doc = parse_yaml("test.yaml", yaml).unwrap();
@@ -146,7 +150,10 @@ kind: Pipeline
 metadata:
   namespace: default
 spec:
-  tasks: []
+  tasks:
+    - name: build
+      taskRef:
+        name: some-task
 "#;
 
         let doc = parse_yaml("test.yaml", yaml).unwrap();

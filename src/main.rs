@@ -1,11 +1,13 @@
 mod cache;
 mod parser;
+mod validator;
 
 use cache::DocumentCache;
 use clap::Parser;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
+use validator::TektonValidator;
 
 /// Tekton Language Server Protocol (LSP) implementation
 #[derive(Parser, Debug)]
@@ -25,6 +27,7 @@ struct Args {
 struct Backend {
     client: Client,
     cache: DocumentCache,
+    validator: TektonValidator,
 }
 
 #[tower_lsp::async_trait]
@@ -74,7 +77,7 @@ impl LanguageServer for Backend {
             params.text_document.text,
         );
 
-        // Parse the document for validation (will be used in future for diagnostics)
+        // Parse and validate the document
         if let Some(doc) = self.cache.get(&params.text_document.uri) {
             match parser::parse_yaml(&params.text_document.uri.to_string(), &doc.content) {
                 Ok(yaml_doc) => {
@@ -83,9 +86,38 @@ impl LanguageServer for Backend {
                         yaml_doc.kind,
                         yaml_doc.api_version
                     );
+
+                    // Validate and publish diagnostics
+                    let diagnostics = self.validator.validate(&yaml_doc);
+
+                    self.client
+                        .publish_diagnostics(params.text_document.uri.clone(), diagnostics, None)
+                        .await;
                 }
                 Err(e) => {
                     tracing::error!("Failed to parse YAML: {}", e);
+
+                    // Publish parse error as diagnostic
+                    self.client
+                        .publish_diagnostics(
+                            params.text_document.uri,
+                            vec![Diagnostic {
+                                range: Range {
+                                    start: Position { line: 0, character: 0 },
+                                    end: Position { line: 0, character: 0 },
+                                },
+                                severity: Some(DiagnosticSeverity::ERROR),
+                                code: None,
+                                code_description: None,
+                                source: Some("tekton-lsp".to_string()),
+                                message: format!("Failed to parse YAML: {}", e),
+                                related_information: None,
+                                tags: None,
+                                data: None,
+                            }],
+                            None,
+                        )
+                        .await;
                 }
             }
         }
@@ -105,6 +137,45 @@ impl LanguageServer for Backend {
             params.text_document.version,
             params.content_changes,
         );
+
+        // Re-validate after change
+        if let Some(doc) = self.cache.get(&params.text_document.uri) {
+            match parser::parse_yaml(&params.text_document.uri.to_string(), &doc.content) {
+                Ok(yaml_doc) => {
+                    // Validate and publish updated diagnostics
+                    let diagnostics = self.validator.validate(&yaml_doc);
+
+                    self.client
+                        .publish_diagnostics(params.text_document.uri.clone(), diagnostics, None)
+                        .await;
+                }
+                Err(e) => {
+                    tracing::error!("Failed to parse YAML after change: {}", e);
+
+                    // Publish parse error
+                    self.client
+                        .publish_diagnostics(
+                            params.text_document.uri,
+                            vec![Diagnostic {
+                                range: Range {
+                                    start: Position { line: 0, character: 0 },
+                                    end: Position { line: 0, character: 0 },
+                                },
+                                severity: Some(DiagnosticSeverity::ERROR),
+                                code: None,
+                                code_description: None,
+                                source: Some("tekton-lsp".to_string()),
+                                message: format!("Failed to parse YAML: {}", e),
+                                related_information: None,
+                                tags: None,
+                                data: None,
+                            }],
+                            None,
+                        )
+                        .await;
+                }
+            }
+        }
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
@@ -145,6 +216,7 @@ async fn main() {
     let (service, socket) = LspService::new(|client| Backend {
         client,
         cache: DocumentCache::new(),
+        validator: TektonValidator::new(),
     });
 
     // Run the server
