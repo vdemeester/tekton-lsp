@@ -1,3 +1,7 @@
+mod cache;
+mod parser;
+
+use cache::DocumentCache;
 use clap::Parser;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
@@ -17,9 +21,10 @@ struct Args {
     verbose: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Backend {
     client: Client,
+    cache: DocumentCache,
 }
 
 #[tower_lsp::async_trait]
@@ -60,6 +65,30 @@ impl LanguageServer for Backend {
                 format!("Document opened: {}", params.text_document.uri),
             )
             .await;
+
+        // Add document to cache
+        self.cache.insert(
+            params.text_document.uri.clone(),
+            params.text_document.language_id,
+            params.text_document.version,
+            params.text_document.text,
+        );
+
+        // Parse the document for validation (will be used in future for diagnostics)
+        if let Some(doc) = self.cache.get(&params.text_document.uri) {
+            match parser::parse_yaml(&params.text_document.uri.to_string(), &doc.content) {
+                Ok(yaml_doc) => {
+                    tracing::debug!(
+                        "Parsed document: kind={:?}, apiVersion={:?}",
+                        yaml_doc.kind,
+                        yaml_doc.api_version
+                    );
+                }
+                Err(e) => {
+                    tracing::error!("Failed to parse YAML: {}", e);
+                }
+            }
+        }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
@@ -69,6 +98,13 @@ impl LanguageServer for Backend {
                 format!("Document changed: {}", params.text_document.uri),
             )
             .await;
+
+        // Update document in cache
+        self.cache.update(
+            &params.text_document.uri,
+            params.text_document.version,
+            params.content_changes,
+        );
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
@@ -78,6 +114,9 @@ impl LanguageServer for Backend {
                 format!("Document closed: {}", params.text_document.uri),
             )
             .await;
+
+        // Remove document from cache
+        self.cache.remove(&params.text_document.uri);
     }
 }
 
@@ -103,7 +142,10 @@ async fn main() {
     let stdout = tokio::io::stdout();
 
     // Create the LSP service
-    let (service, socket) = LspService::new(|client| Backend { client });
+    let (service, socket) = LspService::new(|client| Backend {
+        client,
+        cache: DocumentCache::new(),
+    });
 
     // Run the server
     Server::new(stdin, stdout, socket).serve(service).await;
