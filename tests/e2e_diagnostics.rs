@@ -124,7 +124,10 @@ metadata:
   namespace: default
   # ERROR: Missing required 'name' field
 spec:
-  tasks: []
+  tasks:
+    - name: build
+      taskRef:
+        name: some-task
 "#;
 
         client.initialize().await;
@@ -148,28 +151,27 @@ spec:
     /// When: Client opens the document
     /// Then: Server publishes diagnostic for empty tasks
     #[tokio::test]
-    #[ignore] // Enable in Task 3
     async fn test_empty_tasks_array() {
-        // let (client, server) = create_test_lsp().await;
+        let (client, server) = create_test_lsp().await;
 
-        // let invalid_pipeline = r#"
-        // apiVersion: tekton.dev/v1
-        // kind: Pipeline
-        // metadata:
-        //   name: test
-        // spec:
-        //   tasks: []  # ERROR: Must have at least one task
-        // "#;
+        let invalid_pipeline = r#"
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test
+spec:
+  tasks: []  # ERROR: Must have at least one task
+"#;
 
-        // client.initialize().await;
-        // client.did_open("file:///test/pipeline.yaml", invalid_pipeline).await;
+        client.initialize().await;
+        client.did_open("file:///test/pipeline.yaml", invalid_pipeline).await;
 
-        // let diagnostics = server.receive_diagnostics().await;
-        // assert_eq!(diagnostics.len(), 1);
+        let diagnostics = server.receive_diagnostics().await;
+        assert_eq!(diagnostics.len(), 1);
 
-        // let error = &diagnostics[0];
-        // assert!(error.message.contains("at least one task"));
-        // assert_eq!(error.range.start.line, 6); // Line with 'tasks: []'
+        let error = &diagnostics[0];
+        assert!(error.message.contains("at least one task") || error.message.contains("empty"));
+        assert_eq!(error.range.start.line, 6); // Line with 'tasks: []'
     }
 
     /// Test Case 4: Type Mismatch

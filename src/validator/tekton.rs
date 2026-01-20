@@ -34,7 +34,37 @@ impl TektonValidator {
             }
         }
 
+        // Validate Pipeline-specific rules
+        if doc.kind.as_deref() == Some("Pipeline") {
+            self.validate_pipeline(doc, &mut diagnostics);
+        }
+
         diagnostics
+    }
+
+    /// Validate Pipeline-specific rules
+    fn validate_pipeline(&self, doc: &YamlDocument, diagnostics: &mut Vec<Diagnostic>) {
+        if let Some(spec_node) = doc.root.get("spec") {
+            if let Some(tasks_node) = spec_node.get("tasks") {
+                // Check if tasks is a sequence and if it's empty
+                use crate::parser::NodeValue;
+                if let NodeValue::Sequence(ref tasks) = tasks_node.value {
+                    if tasks.is_empty() {
+                        diagnostics.push(Diagnostic {
+                            range: tasks_node.range,
+                            severity: Some(DiagnosticSeverity::ERROR),
+                            code: None,
+                            code_description: None,
+                            source: Some("tekton-lsp".to_string()),
+                            message: "Pipeline must have at least one task".to_string(),
+                            related_information: None,
+                            tags: None,
+                            data: None,
+                        });
+                    }
+                }
+            }
+        }
     }
 }
 
