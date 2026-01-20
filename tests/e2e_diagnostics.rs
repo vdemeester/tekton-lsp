@@ -24,34 +24,18 @@ mod e2e_tests {
         }
 
         async fn did_open(&self, uri: &str, content: &str) {
-            // Parse YAML and validate
+            // Parse YAML and validate using production validator
             use tekton_lsp::parser::parse_yaml;
+            use tekton_lsp::validator::TektonValidator;
 
             let doc = match parse_yaml(uri, content) {
                 Ok(d) => d,
                 Err(_) => return, // Parse error, skip validation
             };
 
-            // Validate metadata.name exists
-            let mut diagnostics_vec = vec![];
-
-            if let Some(metadata_node) = doc.root.get("metadata") {
-                // Check if metadata has a 'name' child
-                if metadata_node.get("name").is_none() {
-                    // Missing metadata.name - create diagnostic
-                    diagnostics_vec.push(Diagnostic {
-                        range: metadata_node.range,
-                        severity: Some(DiagnosticSeverity::ERROR),
-                        code: None,
-                        code_description: None,
-                        source: Some("tekton-lsp".to_string()),
-                        message: "Required field 'metadata.name' is missing".to_string(),
-                        related_information: None,
-                        tags: None,
-                        data: None,
-                    });
-                }
-            }
+            // Use real validator from production code
+            let validator = TektonValidator::new();
+            let diagnostics_vec = validator.validate(&doc);
 
             // Store diagnostics
             let mut diagnostics = self.diagnostics.lock().unwrap();
