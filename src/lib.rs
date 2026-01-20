@@ -1,0 +1,5 @@
+// Library interface for tekton-lsp
+// Exposes modules for testing and potential future library use
+
+pub mod cache;
+pub mod parser;
