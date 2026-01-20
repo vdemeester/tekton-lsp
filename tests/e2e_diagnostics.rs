@@ -16,6 +16,7 @@ mod e2e_tests {
     /// Test client for sending LSP requests
     struct TestClient {
         diagnostics: Arc<Mutex<Vec<PublishDiagnosticsParams>>>,
+        documents: Arc<Mutex<std::collections::HashMap<String, String>>>,
     }
 
     impl TestClient {
@@ -24,6 +25,45 @@ mod e2e_tests {
         }
 
         async fn did_open(&self, uri: &str, content: &str) {
+            // Store document content
+            {
+                let mut docs = self.documents.lock().unwrap();
+                docs.insert(uri.to_string(), content.to_string());
+            }
+
+            // Validate and store diagnostics
+            self.validate_document(uri, content).await;
+        }
+
+        async fn did_change(&self, uri: &str, changes: Vec<TextDocumentContentChangeEvent>) {
+            // Get current content
+            let mut current_content = {
+                let docs = self.documents.lock().unwrap();
+                docs.get(uri).cloned().unwrap_or_default()
+            };
+
+            // Apply incremental changes
+            for change in changes {
+                if let Some(range) = change.range {
+                    // Incremental change - apply to content
+                    current_content = apply_change(&current_content, range, &change.text);
+                } else {
+                    // Full document change
+                    current_content = change.text;
+                }
+            }
+
+            // Update stored content
+            {
+                let mut docs = self.documents.lock().unwrap();
+                docs.insert(uri.to_string(), current_content.clone());
+            }
+
+            // Re-validate with new content
+            self.validate_document(uri, &current_content).await;
+        }
+
+        async fn validate_document(&self, uri: &str, content: &str) {
             // Parse YAML and validate using production validator
             use tekton_lsp::parser::parse_yaml;
             use tekton_lsp::validator::TektonValidator;
@@ -47,6 +87,46 @@ mod e2e_tests {
         }
     }
 
+    /// Apply an incremental change to content
+    fn apply_change(content: &str, range: Range, text: &str) -> String {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut result = String::new();
+
+        // Lines before the change
+        for (i, line) in lines.iter().enumerate() {
+            if i < range.start.line as usize {
+                result.push_str(line);
+                result.push('\n');
+            }
+        }
+
+        // Get the prefix of the start line before the change
+        if let Some(start_line) = lines.get(range.start.line as usize) {
+            let prefix = &start_line[..range.start.character.min(start_line.len() as u32) as usize];
+            result.push_str(prefix);
+        }
+
+        // Insert new text
+        result.push_str(text);
+
+        // Get the suffix of the end line after the change
+        if let Some(end_line) = lines.get(range.end.line as usize) {
+            let suffix = &end_line[range.end.character.min(end_line.len() as u32) as usize..];
+            result.push_str(suffix);
+            result.push('\n');
+        }
+
+        // Lines after the change
+        for (i, line) in lines.iter().enumerate() {
+            if i > range.end.line as usize {
+                result.push_str(line);
+                result.push('\n');
+            }
+        }
+
+        result
+    }
+
     /// Test server for receiving LSP responses
     struct TestServer {
         diagnostics: Arc<Mutex<Vec<PublishDiagnosticsParams>>>,
@@ -67,9 +147,11 @@ mod e2e_tests {
     /// Create test LSP client and server
     async fn create_test_lsp() -> (TestClient, TestServer) {
         let diagnostics = Arc::new(Mutex::new(Vec::new()));
+        let documents = Arc::new(Mutex::new(std::collections::HashMap::new()));
 
         let client = TestClient {
             diagnostics: diagnostics.clone(),
+            documents,
         };
 
         let server = TestServer {
@@ -208,41 +290,43 @@ spec:
     /// When: User fixes the error via incremental edit
     /// Then: Diagnostics are updated and error is cleared
     #[tokio::test]
-    #[ignore] // Enable in Task 3
     async fn test_incremental_fix_clears_diagnostic() {
-        // let (client, server) = create_test_lsp().await;
+        let (client, server) = create_test_lsp().await;
 
-        // // Initial invalid pipeline
-        // let invalid = r#"
-        // apiVersion: tekton.dev/v1
-        // kind: Pipeline
-        // metadata:
-        //   namespace: default
-        // spec:
-        //   tasks: []
-        // "#;
+        // Initial invalid pipeline
+        let invalid = r#"
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  namespace: default
+spec:
+  tasks:
+    - name: build
+      taskRef:
+        name: some-task
+"#;
 
-        // client.initialize().await;
-        // client.did_open("file:///test/pipeline.yaml", invalid).await;
+        client.initialize().await;
+        client.did_open("file:///test/pipeline.yaml", invalid).await;
 
-        // let diagnostics = server.receive_diagnostics().await;
-        // assert!(diagnostics.len() > 0, "Should have error initially");
+        let diagnostics = server.receive_diagnostics().await;
+        assert!(diagnostics.len() > 0, "Should have error initially (missing name)");
 
-        // // User adds the missing 'name' field
-        // client.did_change(vec![
-        //     TextDocumentContentChangeEvent {
-        //         range: Some(Range {
-        //             start: Position { line: 4, character: 0 },
-        //             end: Position { line: 4, character: 0 },
-        //         }),
-        //         text: "  name: fixed-pipeline\n".to_string(),
-        //         range_length: None,
-        //     }
-        // ]).await;
+        // User adds the missing 'name' field
+        client.did_change("file:///test/pipeline.yaml", vec![
+            TextDocumentContentChangeEvent {
+                range: Some(Range {
+                    start: Position { line: 4, character: 0 },
+                    end: Position { line: 4, character: 0 },
+                }),
+                text: "  name: fixed-pipeline\n".to_string(),
+                range_length: None,
+            }
+        ]).await;
 
-        // let updated_diagnostics = server.receive_diagnostics().await;
-        // // Should still have empty tasks error, but not missing name
-        // assert!(updated_diagnostics.iter().all(|d| !d.message.contains("name")));
+        let updated_diagnostics = server.receive_diagnostics().await;
+        // Should no longer have missing name error
+        assert_eq!(updated_diagnostics.len(), 0, "Error should be cleared after fix");
     }
 
     /// Test Case 6: Multiple Errors in Same Document
