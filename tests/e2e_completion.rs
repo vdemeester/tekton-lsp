@@ -127,7 +127,6 @@ spec:
 
 // TDD Cycle 5: Step fields completion
 #[test]
-#[ignore] // Enable after Cycle 4 passes
 fn test_complete_step_fields() {
     let content = r#"apiVersion: tekton.dev/v1
 kind: Task
@@ -135,19 +134,23 @@ metadata:
   name: test-task
 spec:
   steps:
-    - "#;
+    - name: build"#;
 
     let yaml_doc = parser::parse_yaml("test.yaml", content)
         .expect("Failed to parse YAML");
     let provider = CompletionProvider::new();
 
-    let position = Position { line: 6, character: 6 };
+    let position = Position { line: 6, character: 6 };  // In steps array, on "name" field
     let completions = provider.provide_completions(&yaml_doc, position);
 
     let labels: Vec<String> = completions.iter().map(|c| c.label.clone()).collect();
-    
-    assert!(labels.contains(&"name".to_string()));
-    assert!(labels.contains(&"image".to_string()));
-    assert!(labels.contains(&"script".to_string()));
-    assert!(labels.contains(&"command".to_string()));
+
+    assert!(labels.contains(&"name".to_string()),
+        "Should suggest 'name'. Got: {:?}", labels);
+    assert!(labels.contains(&"image".to_string()),
+        "Should suggest 'image'. Got: {:?}", labels);
+    assert!(labels.contains(&"script".to_string()),
+        "Should suggest 'script'. Got: {:?}", labels);
+    assert!(labels.contains(&"command".to_string()),
+        "Should suggest 'command'. Got: {:?}", labels);
 }
