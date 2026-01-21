@@ -156,6 +156,33 @@ Customize eglot for Tekton LSP:
 3. View diagnostics: `M-x flymake-show-buffer-diagnostics`
 4. Trigger completion: `M-x completion-at-point` (or `C-M-i`)
 
+### Using Completion in Emacs
+
+The LSP provides context-aware completion for Tekton fields:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  # Type here and press C-M-i for completion
+  |  # Suggests: name, namespace, labels, annotations
+spec:
+  # Completion here suggests Pipeline-specific fields
+  |  # Suggests: tasks, params, workspaces, finally, results
+```
+
+**Triggering Completion:**
+- `M-x completion-at-point` or `C-M-i` (standard Emacs completion)
+- With `company-mode`: automatic popup after typing
+- With `corfu`: automatic inline completion
+
+**Completion Contexts:**
+- **Metadata**: name, namespace, labels, annotations
+- **Pipeline spec**: tasks, params, workspaces, finally, results
+- **Task spec**: steps, params, workspaces, results, volumes
+- **PipelineTask**: name, taskRef, taskSpec, params, workspaces, runAfter
+- **Step**: name, image, script, command, args, env, workingDir
+
 ## Neovim Setup (with nvim-lspconfig)
 
 Using `nvim-lspconfig`:
@@ -213,6 +240,52 @@ lspconfig.tekton_lsp.setup({
   end,
 })
 ```
+
+### Using Completion in Neovim
+
+The LSP provides context-aware completion integrated with Neovim's completion system:
+
+**Triggering Completion:**
+- Insert mode: `<C-x><C-o>` (omni-completion)
+- With nvim-cmp: automatic popup as you type
+- Manual trigger: `<C-Space>` (if configured)
+
+**Example Workflow:**
+```yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  # Type and press <C-x><C-o>
+  na|  # Completes to: name, namespace
+spec:
+  # Context-aware completion
+  ta|  # Suggests: tasks (Pipeline-specific)
+  tasks:
+    - name: build
+      # Inside tasks array, get PipelineTask fields
+      ta|  # Suggests: taskRef, taskSpec (not 'tasks')
+```
+
+**Completion includes:**
+- Field descriptions in popup documentation
+- Field type indicators (String, Object, Array)
+- Required field markers
+
+## VS Code Setup
+
+### Using Completion in VS Code
+
+Once configured, completion works automatically:
+
+**Triggering Completion:**
+- Type and pause - IntelliSense appears automatically
+- Manual trigger: `Ctrl+Space` (Windows/Linux) or `Cmd+Space` (Mac)
+
+**Features:**
+- Context-aware field suggestions
+- Inline documentation for each field
+- Icons indicating field types (property, struct, value)
+- Snippet-like completion for complex fields
 
 ## Claude Code Integration
 
@@ -362,9 +435,19 @@ spec:
 ```
 
 Open this file in your configured editor and verify:
+
+**Diagnostics:**
 1. Two diagnostics appear (missing name, empty tasks)
 2. Diagnostics have correct line numbers
 3. Severity is ERROR for both
+
+**Completion:**
+1. Position cursor in `metadata:` section
+2. Trigger completion (method depends on editor)
+3. Should see: name, namespace, labels, annotations
+4. Position cursor in `spec:` section after removing `tasks: []`
+5. Trigger completion
+6. Should see: tasks, params, workspaces, finally, results
 
 ## Troubleshooting
 
@@ -447,12 +530,19 @@ Create `.tekton-lsp.json` in your project root:
 }
 ```
 
+## Current Features
+
+- ✅ **Document Management** - Full YAML synchronization with incremental updates
+- ✅ **Diagnostics** - Real-time validation of Tekton resources
+- ✅ **Completion** - Context-aware field suggestions for Tekton YAML
+
 ## Next Steps
 
-- **Task Completion**: Implement autocomplete for Tekton fields
-- **Hover Documentation**: Show field documentation on hover
-- **Go-to-Definition**: Jump to Task/Pipeline definitions
-- **VS Code Extension**: Official extension with one-click install
+- **Hover Documentation**: Show field documentation on hover (Task 5 - In Progress)
+- **Go-to-Definition**: Jump to Task/Pipeline definitions (Task 6 - Planned)
+- **Find References**: Find all usages of Tasks/Pipelines (Task 6 - Planned)
+- **Document Symbols**: Outline view of Tekton resources (Task 7 - Planned)
+- **VS Code Extension**: Official extension with one-click install (Task 11 - Planned)
 
 ## Getting Help
 
@@ -470,4 +560,4 @@ Help us improve the LSP server:
 
 ---
 
-**Status**: Active Development | **Version**: 0.1.0 | **Last Updated**: 2026-01-20
+**Status**: Active Development | **Version**: 0.1.0 | **Last Updated**: 2026-01-21
