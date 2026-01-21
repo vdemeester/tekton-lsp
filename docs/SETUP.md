@@ -94,19 +94,22 @@ Emacs with **eglot** (built-in Emacs 29+) provides excellent LSP support.
 Add to your `init.el` or `.emacs`:
 
 ```elisp
-;; Add Tekton LSP server to eglot
+;; Add Tekton LSP server to eglot (supports both yaml-mode and yaml-ts-mode)
 (with-eval-after-load 'eglot
   (add-to-list 'eglot-server-programs
-               '(yaml-mode . ("/path/to/tekton-lsp/target/release/tekton-lsp"))))
+               '((yaml-mode yaml-ts-mode) . ("/path/to/tekton-lsp/target/release/tekton-lsp"))))
 
 ;; Auto-start eglot for YAML files with Tekton resources
-(add-hook 'yaml-mode-hook
-          (lambda ()
-            (when (and buffer-file-name
-                       (or (string-match-p "pipeline.*\\.yaml$" buffer-file-name)
-                           (string-match-p "task.*\\.yaml$" buffer-file-name)
-                           (string-match-p "tekton.*\\.yaml$" buffer-file-name)))
-              (eglot-ensure))))
+(defun my/tekton-lsp-maybe-enable ()
+  "Enable Tekton LSP for Tekton YAML files."
+  (when (and buffer-file-name
+             (or (string-match-p "pipeline.*\\.yaml$" buffer-file-name)
+                 (string-match-p "task.*\\.yaml$" buffer-file-name)
+                 (string-match-p "tekton.*\\.yaml$" buffer-file-name)))
+    (eglot-ensure)))
+
+(add-hook 'yaml-mode-hook #'my/tekton-lsp-maybe-enable)
+(add-hook 'yaml-ts-mode-hook #'my/tekton-lsp-maybe-enable)
 ```
 
 ### With Conditional Activation
@@ -122,10 +125,13 @@ Only activate for Tekton files:
          (goto-char (point-min))
          (re-search-forward "apiVersion: tekton\\.dev/" nil t))))
 
-(add-hook 'yaml-mode-hook
-          (lambda ()
-            (when (my/is-tekton-file)
-              (eglot-ensure))))
+(defun my/tekton-lsp-conditional-enable ()
+  "Enable Tekton LSP if current file is a Tekton resource."
+  (when (my/is-tekton-file)
+    (eglot-ensure)))
+
+(add-hook 'yaml-mode-hook #'my/tekton-lsp-conditional-enable)
+(add-hook 'yaml-ts-mode-hook #'my/tekton-lsp-conditional-enable)
 ```
 
 ### Eglot Configuration
@@ -139,7 +145,7 @@ Customize eglot for Tekton LSP:
 ;; Auto-format on save (optional)
 (add-hook 'eglot-managed-mode-hook
           (lambda ()
-            (when (derived-mode-p 'yaml-mode)
+            (when (derived-mode-p 'yaml-mode 'yaml-ts-mode)
               (add-hook 'before-save-hook #'eglot-format-buffer nil t))))
 ```
 
@@ -208,88 +214,120 @@ lspconfig.tekton_lsp.setup({
 })
 ```
 
-## Claude Code Setup
+## Claude Code Integration
 
-**Claude Code** supports LSP servers through custom configuration!
+While Claude Code doesn't currently have built-in LSP client capabilities, you can still leverage the Tekton LSP server for validation and analysis!
 
-### Step 1: Install the LSP Server
+### Manual LSP Validation
+
+You can use the LSP server as a standalone validation tool:
 
 ```bash
-# Build and install to a permanent location
+# Build the LSP server
+cd /path/to/tekton-lsp
 cargo build --release
-sudo cp target/release/tekton-lsp /usr/local/bin/
-# Or add to your PATH
+
+# Create a simple validation script
+cat > check-tekton.py << 'EOF'
+#!/usr/bin/env python3
+import json, subprocess, sys, time
+
+def validate_tekton_file(filepath):
+    with open(filepath) as f:
+        content = f.read()
+
+    proc = subprocess.Popen(
+        ["./target/release/tekton-lsp"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+
+    # Send LSP initialize
+    init_msg = {"jsonrpc":"2.0","id":1,"method":"initialize",
+                "params":{"capabilities":{},"processId":None,"rootUri":f"file://{filepath}"}}
+    content_len = len(json.dumps(init_msg))
+    proc.stdin.write(f"Content-Length: {content_len}\r\n\r\n{json.dumps(init_msg)}".encode())
+    proc.stdin.flush()
+    time.sleep(0.3)
+
+    # Send initialized
+    init_notif = {"jsonrpc":"2.0","method":"initialized","params":{}}
+    content_len = len(json.dumps(init_notif))
+    proc.stdin.write(f"Content-Length: {content_len}\r\n\r\n{json.dumps(init_notif)}".encode())
+    proc.stdin.flush()
+    time.sleep(0.3)
+
+    # Send didOpen
+    didopen = {"jsonrpc":"2.0","method":"textDocument/didOpen",
+               "params":{"textDocument":{"uri":f"file://{filepath}","languageId":"yaml",
+                                        "version":1,"text":content}}}
+    content_len = len(json.dumps(didopen))
+    proc.stdin.write(f"Content-Length: {content_len}\r\n\r\n{json.dumps(didopen)}".encode())
+    proc.stdin.flush()
+    time.sleep(1)
+
+    proc.stdin.close()
+    output = proc.stdout.read().decode()
+
+    # Parse diagnostics
+    if "publishDiagnostics" in output:
+        # Extract diagnostics from LSP response
+        import re
+        diag_match = re.search(r'\{"jsonrpc.*publishDiagnostics.*?\}\}', output)
+        if diag_match:
+            diag_data = json.loads(diag_match.group(0))
+            diagnostics = diag_data.get("params", {}).get("diagnostics", [])
+            return diagnostics
+    return []
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: check-tekton.py <file.yaml>")
+        sys.exit(1)
+
+    diagnostics = validate_tekton_file(sys.argv[1])
+    if diagnostics:
+        print(f"Found {len(diagnostics)} issues:")
+        for diag in diagnostics:
+            line = diag["range"]["start"]["line"] + 1
+            print(f"  Line {line}: {diag['message']}")
+    else:
+        print("✓ No issues found!")
+EOF
+
+chmod +x check-tekton.py
 ```
 
-### Step 2: Configure Claude Code
+### Using with Claude Code
 
-Claude Code can use LSP servers via **MCP (Model Context Protocol)** or direct configuration.
+When working with Tekton files in Claude Code, you can:
 
-#### Option A: Add as MCP Server (Recommended)
+1. **Ask Claude to validate**: "Run the LSP validator on this file"
+2. **Claude can execute the validation script**: The script above will report diagnostics
+3. **Claude can fix issues**: Based on the diagnostic output
 
-Create `~/.config/claude/mcp-servers.json`:
-
-```json
-{
-  "tekton-lsp": {
-    "command": "/usr/local/bin/tekton-lsp",
-    "args": ["--verbose"],
-    "capabilities": {
-      "textDocument": {
-        "publishDiagnostics": true,
-        "completion": true,
-        "hover": true,
-        "definition": true
-      }
-    }
-  }
-}
-```
-
-#### Option B: Workspace Configuration
-
-Create `.claude/lsp.json` in your workspace:
-
-```json
-{
-  "lspServers": {
-    "tekton": {
-      "command": "/usr/local/bin/tekton-lsp",
-      "args": [],
-      "fileTypes": ["yaml"],
-      "rootPatterns": [".git", "tekton/"],
-      "settings": {
-        "tekton": {
-          "validation": {
-            "enabled": true
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-### Step 3: Verify Setup
-
-When you open a Tekton YAML file in Claude Code:
-
-1. Claude should automatically detect the LSP server
-2. Diagnostics will appear inline
-3. You can ask Claude: "What errors does the LSP report?"
-4. Claude can use LSP data for context-aware assistance
-
-### Example Usage with Claude Code
+### Example Workflow
 
 ```
-User: Open pipeline.yaml and check for errors
+User: Check pipeline.yaml for Tekton validation errors
 
-Claude: I've opened pipeline.yaml. The LSP reports:
-- Line 5: Required field 'metadata.name' is missing
-- Line 10: Pipeline must have at least one task
+Claude: Let me validate pipeline.yaml using the Tekton LSP server...
+[Runs validation script]
 
-Would you like me to fix these issues?
+Found 2 issues:
+  Line 3: Required field 'metadata.name' is missing
+  Line 6: Pipeline must have at least one task
+
+Would you like me to fix these?
+
+User: Yes
+
+Claude: [Adds metadata.name and adds a sample task]
+Done! The file now passes validation.
 ```
+
+### Future: Native LSP Integration
+
+Future versions of Claude Code may include native LSP client capabilities. Until then, the manual validation approach above provides equivalent functionality for validation and diagnostics.
 
 ## Testing the LSP Server
 
