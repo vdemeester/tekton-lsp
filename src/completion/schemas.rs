@@ -2,8 +2,6 @@
 //!
 //! Defines the fields available for different Tekton resource types.
 
-use std::collections::HashMap;
-
 #[derive(Debug, Clone)]
 pub struct FieldSchema {
     pub name: String,
