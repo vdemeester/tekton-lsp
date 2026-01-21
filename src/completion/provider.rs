@@ -56,11 +56,24 @@ impl CompletionProvider {
             match key.as_str() {
                 "metadata" => {
                     // Position is in metadata - return Metadata context for completion
-                    // (Even if we're on an existing field, we want to suggest other metadata fields)
                     return CompletionContext::Metadata;
                 }
                 "spec" => {
-                    // Position is in spec - return appropriate spec context based on kind
+                    // First check if we're inside a child array (tasks/steps)
+                    if let NodeValue::Mapping(children) = &node.value {
+                        for (child_key, child) in children {
+                            if self.position_in_range(position, &child.range) {
+                                // We're inside a specific child - check what it is
+                                match child_key.as_str() {
+                                    "tasks" | "finally" => return CompletionContext::PipelineTask,
+                                    "steps" => return CompletionContext::Step,
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+
+                    // Not in a child array - return spec context based on kind
                     if let Some(kind) = &yaml_doc.kind {
                         match kind.as_str() {
                             "Pipeline" => return CompletionContext::PipelineSpec,
