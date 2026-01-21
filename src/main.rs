@@ -1,8 +1,10 @@
 mod cache;
 mod parser;
 mod validator;
+mod completion;
 
 use cache::DocumentCache;
+use completion::CompletionProvider;
 use clap::Parser;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
@@ -28,6 +30,7 @@ struct Backend {
     client: Client,
     cache: DocumentCache,
     validator: TektonValidator,
+    completion_provider: CompletionProvider,
 }
 
 #[tower_lsp::async_trait]
@@ -46,6 +49,10 @@ impl LanguageServer for Backend {
                         ..Default::default()
                     },
                 )),
+                completion_provider: Some(CompletionOptions {
+                    trigger_characters: Some(vec![":".to_string(), " ".to_string(), "-".to_string()]),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
         })
@@ -59,6 +66,38 @@ impl LanguageServer for Backend {
 
     async fn shutdown(&self) -> Result<()> {
         Ok(())
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let uri = &params.text_document_position.text_document.uri;
+        let position = params.text_document_position.position;
+
+        // Get document from cache
+        if let Some(doc) = self.cache.get(uri) {
+            // Parse the document
+            match parser::parse_yaml(&uri.to_string(), &doc.content) {
+                Ok(yaml_doc) => {
+                    // Get completions from provider
+                    let completions = self.completion_provider.provide_completions(&yaml_doc, position);
+
+                    tracing::debug!(
+                        "Providing {} completions at {}:{}",
+                        completions.len(),
+                        position.line,
+                        position.character
+                    );
+
+                    Ok(Some(CompletionResponse::Array(completions)))
+                }
+                Err(e) => {
+                    tracing::error!("Failed to parse YAML for completion: {}", e);
+                    Ok(None)
+                }
+            }
+        } else {
+            tracing::warn!("Document not found in cache for completion: {}", uri);
+            Ok(None)
+        }
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
@@ -217,6 +256,7 @@ async fn main() {
         client,
         cache: DocumentCache::new(),
         validator: TektonValidator::new(),
+        completion_provider: CompletionProvider::new(),
     });
 
     // Run the server

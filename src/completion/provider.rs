@@ -5,6 +5,7 @@ use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind, Position};
 use crate::parser::{YamlDocument, Node, NodeValue};
 use super::schemas::{TektonSchemas, FieldSchema};
 
+#[derive(Debug, Clone)]
 pub struct CompletionProvider {
     schemas: TektonSchemas,
 }

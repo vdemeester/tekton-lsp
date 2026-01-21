@@ -18,6 +18,7 @@ pub enum FieldType {
     Boolean,
 }
 
+#[derive(Debug, Clone)]
 pub struct TektonSchemas {
     metadata_fields: Vec<FieldSchema>,
     pipeline_spec_fields: Vec<FieldSchema>,
