@@ -60,26 +60,8 @@ impl CompletionProvider {
                     return CompletionContext::Metadata;
                 }
                 "spec" => {
-                    // Check document kind to determine spec type
+                    // Position is in spec - return appropriate spec context based on kind
                     if let Some(kind) = &yaml_doc.kind {
-                        // Check if we're in a child node
-                        if let NodeValue::Mapping(children) = &node.value {
-                            for (_key, child) in children {
-                                if self.position_in_range(position, &child.range) {
-                                    // Check if this child is tasks/steps/etc.
-                                    if let Some(child_key) = &child.key {
-                                        match child_key.as_str() {
-                                            "tasks" => return CompletionContext::PipelineTask,
-                                            "steps" => return CompletionContext::Step,
-                                            _ => {}
-                                        }
-                                    }
-                                    return self.find_completion_context(child, position, yaml_doc);
-                                }
-                            }
-                        }
-
-                        // Position is in spec but not in a child - return spec context
                         match kind.as_str() {
                             "Pipeline" => return CompletionContext::PipelineSpec,
                             "Task" => return CompletionContext::TaskSpec,

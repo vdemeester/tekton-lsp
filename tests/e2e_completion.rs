@@ -45,27 +45,29 @@ metadata:
 
 // TDD Cycle 2: Pipeline spec completion
 #[test]
-#[ignore] // Enable after Cycle 1 passes
 fn test_complete_pipeline_spec_fields() {
     let content = r#"apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: test
 spec:
-  "#;
+  params: []"#;
 
     let yaml_doc = parser::parse_yaml("test.yaml", content)
         .expect("Failed to parse YAML");
     let provider = CompletionProvider::new();
 
-    let position = Position { line: 4, character: 7 };
+    let position = Position { line: 5, character: 2 };  // In spec section, on "params" line
     let completions = provider.provide_completions(&yaml_doc, position);
 
     let labels: Vec<String> = completions.iter().map(|c| c.label.clone()).collect();
-    
-    assert!(labels.contains(&"tasks".to_string()));
-    assert!(labels.contains(&"params".to_string()));
-    assert!(labels.contains(&"workspaces".to_string()));
+
+    assert!(labels.contains(&"tasks".to_string()),
+        "Should suggest 'tasks'. Got: {:?}", labels);
+    assert!(labels.contains(&"params".to_string()),
+        "Should suggest 'params'. Got: {:?}", labels);
+    assert!(labels.contains(&"workspaces".to_string()),
+        "Should suggest 'workspaces'. Got: {:?}", labels);
 }
 
 // TDD Cycle 3: PipelineTask fields completion
