@@ -10,8 +10,8 @@
 
 - ✅ **Document Management** - Full document synchronization with incremental updates
 - ✅ **YAML Parsing** - Tree-sitter based parsing with accurate position tracking
-- 🚧 **Diagnostics** - Real-time validation of Tekton resources (In Progress)
-- 🔜 **Completion** - Context-aware autocomplete for Tekton fields
+- ✅ **Diagnostics** - Real-time validation of Tekton resources
+- ✅ **Completion** - Context-aware autocomplete for Tekton fields
 - 🔜 **Hover Documentation** - Inline documentation for Tekton resources
 - 🔜 **Go-to-Definition** - Jump to Task/Pipeline definitions
 - 🔜 **Find References** - Find all usages of Tasks and Pipelines
@@ -72,10 +72,11 @@ Quick editor test:
 cargo test
 
 # Run with verbose output
-cargo test -- --nocaptures
+cargo test -- --nocapture
 
-# Run end-to-end tests (when Task 3 is complete)
+# Run specific test suites
 cargo test --test e2e_diagnostics
+cargo test --test e2e_completion
 ```
 
 ### Building
@@ -108,9 +109,9 @@ RUST_LOG=trace ./target/debug/tekton-lsp
 | | Task 1 | ✅ Done | LSP server scaffold with tower-lsp |
 | | Task 2 | ✅ Done | Document management & tree-sitter parsing |
 | **Phase 2: Diagnostics** | | | |
-| | Task 3 | 🚧 In Progress | Tekton resource validation |
+| | Task 3 | ✅ Done | Tekton resource validation |
 | **Phase 3: Completion** | | | |
-| | Task 4 | 🔜 Planned | Schema-based completion |
+| | Task 4 | ✅ Done | Context-aware completion |
 | **Phase 4: Documentation** | | | |
 | | Task 5 | 🔜 Planned | Hover documentation provider |
 | **Phase 5: Navigation** | | | |
@@ -134,7 +135,7 @@ RUST_LOG=trace ./target/debug/tekton-lsp
 
 Contributions are welcome! This project is in active development.
 
-We're currently implementing **Task 3: Diagnostics**. See [tests/e2e_diagnostics.rs](tests/e2e_diagnostics.rs) for test scenarios.
+We're currently implementing **Task 5: Hover Documentation**. Tasks 1-4 are complete with comprehensive test coverage.
 
 ### Development Workflow
 
@@ -169,10 +170,10 @@ With tree-sitter:
 - ✅ LSP server scaffold
 - ✅ Document synchronization
 - ✅ Tree-sitter YAML parsing
-- 🚧 Diagnostics & validation
+- ✅ Diagnostics & validation
+- ✅ Context-aware completion
 
 ### Medium Term (Next)
-- Schema-based completion
 - Hover documentation
 - Go-to-definition
 - Find references
@@ -204,4 +205,4 @@ Apache License 2.0 - See [LICENSE](LICENSE) for details.
 
 ---
 
-**Status**: Active Development | **Last Updated**: 2026-01-20
+**Status**: Active Development | **Last Updated**: 2026-01-21

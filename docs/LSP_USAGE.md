@@ -101,7 +101,7 @@ Server:
 
 ### 2. Diagnostics (Validation)
 
-**Status:** 🚧 Coming in Task 3
+**Status:** ✅ Implemented (Task 3)
 
 Validates Tekton resources against schemas and reports errors.
 
@@ -153,7 +153,7 @@ spec:
 
 ### 3. Completion (Schema-based)
 
-**Status:** 🚧 Coming in Task 4
+**Status:** ✅ Implemented (Task 4)
 
 Suggests valid fields based on Tekton schema and context.
 
@@ -408,8 +408,8 @@ require'lspconfig'.tekton_lsp.setup{
 | ✅ Document Management | Done | Task 2 |
 | ✅ Tree-sitter Parser | Done | Task 2 |
 | ✅ Position Tracking | Done | Task 2 |
-| 🚧 Diagnostics | In Progress | Task 3 |
-| 🔜 Completion | Planned | Task 4 |
+| ✅ Diagnostics | Done | Task 3 |
+| ✅ Completion | Done | Task 4 |
 | 🔜 Hover Documentation | Planned | Task 5 |
 | 🔜 Go-to-Definition | Planned | Task 6 |
 | 🔜 Find References | Planned | Task 6 |
@@ -419,11 +419,11 @@ require'lspconfig'.tekton_lsp.setup{
 
 See `docs/plans/2026-01-20-tekton-lsp-implementation.md` for the full implementation plan.
 
-**Current Focus: Task 3 - Diagnostics**
+**Current Focus: Task 5 - Hover Documentation**
 
-Using Test-Driven Development (TDD):
-1. Write failing test for Pipeline validation
-2. Implement Tekton schema types
-3. Add validation logic
-4. Publish diagnostics to client
-5. Verify end-to-end with integration tests
+Tasks 1-4 complete with full test coverage:
+- ✅ LSP scaffold and document management
+- ✅ Diagnostics (7 tests, 1 ignored for future)
+- ✅ Completion (5 context-aware completion tests)
+
+Next up: Hover documentation provider for inline field documentation.
