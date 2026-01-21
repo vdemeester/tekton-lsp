@@ -4,7 +4,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Skill(TestDrivenDevelopment)",
-      "Bash(cargo test:*)"
+      "Bash(cargo test:*)",
+      "Bash(~/.config/claude/history/sessions/2026-01/2026-01-20_session-log.txt)",
+      "Skill(TODOs)",
+      "Bash(~/.config/claude/skills/Org/tools/org-manager search ~/desktop/org/todos.org \"tekton-lsp\")",
+      "Bash(~/.config/claude/skills/Org/tools/org-manager list:*)",
+      "Bash(cargo build:*)",
+      "Bash(./target/release/tekton-lsp:*)"
     ]
   }
 }
