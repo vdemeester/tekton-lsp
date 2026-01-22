@@ -1,3 +1,5 @@
 mod document;
 
-pub use document::{Document, DocumentCache};
+#[allow(unused_imports)]
+pub use document::Document;
+pub use document::DocumentCache;

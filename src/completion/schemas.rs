@@ -7,6 +7,8 @@ pub struct FieldSchema {
     pub name: String,
     pub description: String,
     pub field_type: FieldType,
+    /// Whether this field is required (for future validation/snippets)
+    #[allow(dead_code)]
     pub required: bool,
 }
 
@@ -15,6 +17,8 @@ pub enum FieldType {
     String,
     Array,
     Object,
+    /// Boolean type for future use
+    #[allow(dead_code)]
     Boolean,
 }
 

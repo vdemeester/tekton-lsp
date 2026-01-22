@@ -47,17 +47,20 @@ impl Node {
         }
     }
 
-    /// Check if this node is a mapping
+    /// Check if this node is a mapping (used in tests)
+    #[allow(dead_code)]
     pub fn is_mapping(&self) -> bool {
         matches!(self.value, NodeValue::Mapping(_))
     }
 
-    /// Check if this node is a sequence
+    /// Check if this node is a sequence (used in tests)
+    #[allow(dead_code)]
     pub fn is_sequence(&self) -> bool {
         matches!(self.value, NodeValue::Sequence(_))
     }
 
-    /// Check if this node is a scalar
+    /// Check if this node is a scalar (used in tests)
+    #[allow(dead_code)]
     pub fn is_scalar(&self) -> bool {
         matches!(self.value, NodeValue::Scalar(_))
     }
@@ -66,7 +69,8 @@ impl Node {
 /// A parsed YAML document
 #[derive(Debug, Clone)]
 pub struct YamlDocument {
-    /// The filename or URI of the document
+    /// The filename or URI of the document (used for diagnostics)
+    #[allow(dead_code)]
     pub filename: String,
     /// The root node of the document
     pub root: Node,
@@ -97,13 +101,15 @@ impl YamlDocument {
         }
     }
 
-    /// Find the node at a specific position in the document
+    /// Find the node at a specific position in the document (for hover/goto-definition)
+    #[allow(dead_code)]
     pub fn find_node_at_position(&self, position: Position) -> Option<&Node> {
         find_node_at_position_recursive(&self.root, position)
     }
 }
 
-/// Recursively find the node at a specific position
+/// Recursively find the node at a specific position (for hover/goto-definition)
+#[allow(dead_code)]
 fn find_node_at_position_recursive(node: &Node, position: Position) -> Option<&Node> {
     // Check if position is within this node's range
     if !position_in_range(position, node.range) {
@@ -133,7 +139,8 @@ fn find_node_at_position_recursive(node: &Node, position: Position) -> Option<&N
     Some(node)
 }
 
-/// Check if a position is within a range
+/// Check if a position is within a range (for hover/goto-definition)
+#[allow(dead_code)]
 fn position_in_range(pos: Position, range: Range) -> bool {
     if pos.line < range.start.line || pos.line > range.end.line {
         return false;

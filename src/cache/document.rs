@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use tower_lsp::lsp_types::{Position, Range, TextDocumentContentChangeEvent, Url};
+use tower_lsp::lsp_types::{Range, TextDocumentContentChangeEvent, Url};
 
 /// Represents a text document in the workspace
 #[derive(Debug, Clone)]
 pub struct Document {
+    /// URI is used in tests and for workspace features
+    #[allow(dead_code)]
     pub uri: Url,
+    /// Language ID is used in tests
+    #[allow(dead_code)]
     pub language_id: String,
     pub version: i32,
     pub content: String,
@@ -131,7 +135,8 @@ impl DocumentCache {
         documents.remove(uri);
     }
 
-    /// Get all documents in the cache
+    /// Get all documents in the cache (for future workspace features)
+    #[allow(dead_code)]
     pub fn all(&self) -> Vec<Document> {
         let documents = self.documents.read().unwrap();
         documents.values().cloned().collect()
