@@ -7,6 +7,7 @@ use crate::completion::CompletionProvider;
 use crate::definition::DefinitionProvider;
 use crate::hover::HoverProvider;
 use crate::parser;
+use crate::symbols::SymbolsProvider;
 use crate::validator::TektonValidator;
 use crate::workspace::WorkspaceIndex;
 use tower_lsp::jsonrpc::Result;
@@ -22,6 +23,7 @@ pub struct Backend {
     completion_provider: CompletionProvider,
     hover_provider: HoverProvider,
     definition_provider: DefinitionProvider,
+    symbols_provider: SymbolsProvider,
 }
 
 impl Backend {
@@ -35,6 +37,7 @@ impl Backend {
             completion_provider: CompletionProvider::new(),
             hover_provider: HoverProvider::new(),
             definition_provider: DefinitionProvider::new(workspace_index),
+            symbols_provider: SymbolsProvider::new(),
         }
     }
 }
@@ -61,6 +64,7 @@ impl LanguageServer for Backend {
                 }),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 definition_provider: Some(OneOf::Left(true)),
+                document_symbol_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
         })
@@ -171,6 +175,38 @@ impl LanguageServer for Backend {
             }
         } else {
             tracing::warn!("Document not found in cache for definition: {}", uri);
+            Ok(None)
+        }
+    }
+
+    async fn document_symbol(
+        &self,
+        params: DocumentSymbolParams,
+    ) -> Result<Option<DocumentSymbolResponse>> {
+        let uri = &params.text_document.uri;
+
+        // Get document from cache
+        if let Some(doc) = self.cache.get(uri) {
+            // Parse the document
+            match parser::parse_yaml(&uri.to_string(), &doc.content) {
+                Ok(yaml_doc) => {
+                    // Get symbols from provider
+                    let symbols = self.symbols_provider.provide_symbols(&yaml_doc);
+
+                    tracing::debug!(
+                        "Providing {} document symbols",
+                        symbols.len()
+                    );
+
+                    Ok(Some(DocumentSymbolResponse::Nested(symbols)))
+                }
+                Err(e) => {
+                    tracing::error!("Failed to parse YAML for symbols: {}", e);
+                    Ok(None)
+                }
+            }
+        } else {
+            tracing::warn!("Document not found in cache for symbols: {}", uri);
             Ok(None)
         }
     }

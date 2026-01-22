@@ -4,6 +4,7 @@ mod definition;
 mod hover;
 mod parser;
 mod server;
+mod symbols;
 mod validator;
 mod workspace;
 
