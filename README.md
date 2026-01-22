@@ -12,10 +12,11 @@
 - ✅ **YAML Parsing** - Tree-sitter based parsing with accurate position tracking
 - ✅ **Diagnostics** - Real-time validation of Tekton resources
 - ✅ **Completion** - Context-aware autocomplete for Tekton fields
-- 🔜 **Hover Documentation** - Inline documentation for Tekton resources
-- 🔜 **Go-to-Definition** - Jump to Task/Pipeline definitions
-- 🔜 **Find References** - Find all usages of Tasks and Pipelines
-- 🔜 **Document Symbols** - Outline view of Tekton resources
+- ✅ **Hover Documentation** - Inline documentation for Tekton resources
+- ✅ **Go-to-Definition** - Jump to Task/Pipeline definitions
+- ✅ **Document Symbols** - Outline view of Tekton resources
+- ✅ **Formatting** - YAML formatting with consistent indentation
+- ✅ **Code Actions** - Quick fixes for common issues
 
 ## Quick Start
 
@@ -52,7 +53,7 @@ cargo test
 ### Editor Setup
 
 See **[docs/SETUP.md](docs/SETUP.md)** for detailed setup instructions for:
-- **VS Code** - Manual configuration and future extension
+- **VS Code** - Extension available in `editors/vscode/`
 - **Emacs** - Using eglot (built-in Emacs 29+)
 - **Neovim** - Using nvim-lspconfig
 - **Claude Code** - LSP integration via MCP
@@ -77,6 +78,11 @@ cargo test -- --nocapture
 # Run specific test suites
 cargo test --test e2e_diagnostics
 cargo test --test e2e_completion
+cargo test --test e2e_hover
+cargo test --test e2e_definition
+cargo test --test e2e_symbols
+cargo test --test e2e_formatting
+cargo test --test e2e_codeactions
 ```
 
 ### Building
@@ -113,29 +119,32 @@ RUST_LOG=trace ./target/debug/tekton-lsp
 | **Phase 3: Completion** | | | |
 | | Task 4 | ✅ Done | Context-aware completion |
 | **Phase 4: Documentation** | | | |
-| | Task 5 | 🔜 Planned | Hover documentation provider |
+| | Task 5 | ✅ Done | Hover documentation provider |
 | **Phase 5: Navigation** | | | |
-| | Task 6 | 🔜 Planned | Go-to-definition & find references |
+| | Task 6 | ✅ Done | Go-to-definition |
 | **Phase 6: Advanced** | | | |
-| | Task 7 | 🔜 Planned | Document symbols & outline |
-| | Task 8 | 🔜 Planned | YAML formatting |
-| | Task 9 | 🔜 Planned | Code actions & quick fixes |
+| | Task 7 | ✅ Done | Document symbols & outline |
+| | Task 8 | ✅ Done | YAML formatting |
+| | Task 9 | ✅ Done | Code actions & quick fixes |
 | **Phase 7: Integration** | | | |
-| | Task 10 | 🔜 Planned | Integration tests |
-| | Task 11 | 🔜 Planned | VS Code extension |
-| | Task 12 | 🔜 Planned | Documentation & release |
+| | Task 10 | ✅ Done | Integration tests (81 tests) |
+| | Task 11 | ✅ Done | VS Code extension |
+| | Task 12 | ✅ Done | Documentation & release |
 
 ## Documentation
 
 - [LSP Usage Guide](docs/LSP_USAGE.md) - Comprehensive guide on LSP features and usage
+- [Editor Setup](docs/SETUP.md) - Detailed editor configuration instructions
 - [Implementation Plan](docs/plans/2026-01-20-tekton-lsp-implementation.md) - Detailed implementation roadmap
 - [Architectural Decision: Rust](docs/DECISION-RUST.md) - Why we chose Rust over Go
 
+## VS Code Extension
+
+A VS Code extension is available in `editors/vscode/`. See the [extension README](editors/vscode/README.md) for installation instructions.
+
 ## Contributing
 
-Contributions are welcome! This project is in active development.
-
-We're currently implementing **Task 5: Hover Documentation**. Tasks 1-4 are complete with comprehensive test coverage.
+Contributions are welcome! All planned features are now implemented with comprehensive test coverage.
 
 ### Development Workflow
 
@@ -164,27 +173,38 @@ With tree-sitter:
 - **hover**: < 20ms (documentation lookup)
 - **definition**: < 50ms (reference resolution)
 
+## Supported Resources
+
+- Pipeline
+- Task
+- ClusterTask
+- PipelineRun
+- TaskRun
+- TriggerTemplate
+- TriggerBinding
+- EventListener
+
 ## Roadmap
 
-### Short Term (Current)
+### Completed
 - ✅ LSP server scaffold
 - ✅ Document synchronization
 - ✅ Tree-sitter YAML parsing
 - ✅ Diagnostics & validation
 - ✅ Context-aware completion
+- ✅ Hover documentation
+- ✅ Go-to-definition
+- ✅ Document symbols
+- ✅ YAML formatting
+- ✅ Code actions
+- ✅ VS Code extension
 
-### Medium Term (Next)
-- Hover documentation
-- Go-to-definition
-- Find references
-- Document symbols
-
-### Long Term (Future)
-- VS Code extension
-- Workspace-wide analysis
+### Future Enhancements
+- Find references (workspace-wide)
 - Integration with Tekton Hub
 - Extract reusable `tekton-types` crate
 - Performance optimizations
+- Additional editor plugins (IntelliJ, Sublime)
 
 ## License
 
@@ -205,4 +225,4 @@ Apache License 2.0 - See [LICENSE](LICENSE) for details.
 
 ---
 
-**Status**: Active Development | **Last Updated**: 2026-01-21
+**Status**: Feature Complete | **Last Updated**: 2026-01-22

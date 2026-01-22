@@ -21,7 +21,32 @@ The release binary is optimized and small (~5-10MB).
 
 ## VS Code Setup
 
-### Option 1: Manual Configuration (Development)
+### Option 1: Use the Extension (Recommended)
+
+An extension is available in `editors/vscode/`:
+
+```bash
+cd editors/vscode
+npm install
+npm run compile
+npm run package
+code --install-extension tekton-lsp-0.1.0.vsix
+```
+
+The extension automatically:
+- Detects the `tekton-lsp` binary from PATH or bundled location
+- Activates for YAML files
+- Provides all LSP features (diagnostics, completion, hover, go-to-definition, etc.)
+
+Configure in VS Code settings:
+```json
+{
+  "tekton-lsp.serverPath": "/path/to/tekton-lsp",
+  "tekton-lsp.trace.server": "verbose"
+}
+```
+
+### Option 2: Manual Configuration
 
 Create `.vscode/settings.json` in your workspace:
 
@@ -30,44 +55,11 @@ Create `.vscode/settings.json` in your workspace:
   "yaml.customTags": [
     "!reference scalar",
     "!reference sequence"
-  ],
-  "yaml.schemas": {
-    "https://raw.githubusercontent.com/tektoncd/pipeline/main/docs/api-spec/spec.json": "*.yaml"
-  },
-  "[yaml]": {
-    "editor.defaultFormatter": "redhat.vscode-yaml"
-  }
-}
-```
-
-Install a generic LSP client extension:
-- Install **vscode-lsp-client** or **Custom Local Formatters**
-- Configure the LSP server path
-
-Create `.vscode/launch.json`:
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "lsp",
-      "request": "launch",
-      "name": "Tekton LSP",
-      "command": "/path/to/tekton-lsp/target/release/tekton-lsp",
-      "args": ["--verbose"],
-      "filetypes": ["yaml"],
-      "rootPatterns": [".git", "kustomization.yaml"]
-    }
   ]
 }
 ```
 
-### Option 2: Using vscode-langservers-extracted
-
-If you have `vscode-langservers-extracted`, you can add custom LSP configuration:
-
-Create a VS Code extension or use workspace settings to register the LSP:
+Use a generic LSP client extension with this configuration:
 
 ```json
 {
@@ -81,11 +73,6 @@ Create a VS Code extension or use workspace settings to register the LSP:
     }
   }
 }
-```
-
-### Option 3: Create VS Code Extension (Future)
-
-We plan to publish an official VS Code extension. Stay tuned!
 
 ## Emacs Setup (with eglot)
 
@@ -535,14 +522,18 @@ Create `.tekton-lsp.json` in your project root:
 - ✅ **Document Management** - Full YAML synchronization with incremental updates
 - ✅ **Diagnostics** - Real-time validation of Tekton resources
 - ✅ **Completion** - Context-aware field suggestions for Tekton YAML
+- ✅ **Hover Documentation** - Inline documentation for fields and resources
+- ✅ **Go-to-Definition** - Jump to Task/Pipeline definitions
+- ✅ **Document Symbols** - Outline view of Tekton resources
+- ✅ **Formatting** - YAML formatting with consistent indentation
+- ✅ **Code Actions** - Quick fixes for common issues
+- ✅ **VS Code Extension** - Available in `editors/vscode/`
 
-## Next Steps
+## Future Enhancements
 
-- **Hover Documentation**: Show field documentation on hover (Task 5 - In Progress)
-- **Go-to-Definition**: Jump to Task/Pipeline definitions (Task 6 - Planned)
-- **Find References**: Find all usages of Tasks/Pipelines (Task 6 - Planned)
-- **Document Symbols**: Outline view of Tekton resources (Task 7 - Planned)
-- **VS Code Extension**: Official extension with one-click install (Task 11 - Planned)
+- **Find References**: Find all usages of Tasks/Pipelines (workspace-wide)
+- **Integration with Tekton Hub**: Resolve remote tasks
+- **Additional Editor Plugins**: IntelliJ, Sublime Text
 
 ## Getting Help
 
@@ -560,4 +551,4 @@ Help us improve the LSP server:
 
 ---
 
-**Status**: Active Development | **Version**: 0.1.0 | **Last Updated**: 2026-01-21
+**Status**: Feature Complete | **Version**: 0.1.0 | **Last Updated**: 2026-01-22
