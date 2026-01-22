@@ -1,3 +1,4 @@
+mod actions;
 mod cache;
 mod completion;
 mod definition;

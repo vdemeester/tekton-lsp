@@ -1,6 +1,7 @@
 // Library interface for tekton-lsp
 // Exposes modules for testing and potential future library use
 
+pub mod actions;
 pub mod cache;
 pub mod parser;
 pub mod validator;

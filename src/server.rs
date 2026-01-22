@@ -2,6 +2,7 @@
 //!
 //! Contains the Backend struct and LanguageServer trait implementation.
 
+use crate::actions::CodeActionsProvider;
 use crate::cache::DocumentCache;
 use crate::completion::CompletionProvider;
 use crate::definition::DefinitionProvider;
@@ -26,6 +27,7 @@ pub struct Backend {
     definition_provider: DefinitionProvider,
     symbols_provider: SymbolsProvider,
     formatting_provider: FormattingProvider,
+    code_actions_provider: CodeActionsProvider,
 }
 
 impl Backend {
@@ -41,6 +43,7 @@ impl Backend {
             definition_provider: DefinitionProvider::new(workspace_index),
             symbols_provider: SymbolsProvider::new(),
             formatting_provider: FormattingProvider::new(),
+            code_actions_provider: CodeActionsProvider::new(),
         }
     }
 }
@@ -69,6 +72,7 @@ impl LanguageServer for Backend {
                 definition_provider: Some(OneOf::Left(true)),
                 document_symbol_provider: Some(OneOf::Left(true)),
                 document_formatting_provider: Some(OneOf::Left(true)),
+                code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
                 ..Default::default()
             },
         })
@@ -235,6 +239,29 @@ impl LanguageServer for Backend {
         } else {
             tracing::warn!("Document not found in cache for formatting: {}", uri);
             Ok(None)
+        }
+    }
+
+    async fn code_action(
+        &self,
+        params: CodeActionParams,
+    ) -> Result<Option<CodeActionResponse>> {
+        let uri = &params.text_document.uri;
+        let diagnostics = &params.context.diagnostics;
+
+        // Get code actions for the diagnostics
+        let actions = self.code_actions_provider.provide_actions(uri, diagnostics);
+
+        tracing::debug!(
+            "Providing {} code actions for {} diagnostics",
+            actions.len(),
+            diagnostics.len()
+        );
+
+        if actions.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(actions))
         }
     }
 
