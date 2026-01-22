@@ -1,6 +1,7 @@
 mod cache;
 mod completion;
 mod definition;
+mod formatting;
 mod hover;
 mod parser;
 mod server;

@@ -5,6 +5,7 @@
 use crate::cache::DocumentCache;
 use crate::completion::CompletionProvider;
 use crate::definition::DefinitionProvider;
+use crate::formatting::FormattingProvider;
 use crate::hover::HoverProvider;
 use crate::parser;
 use crate::symbols::SymbolsProvider;
@@ -24,6 +25,7 @@ pub struct Backend {
     hover_provider: HoverProvider,
     definition_provider: DefinitionProvider,
     symbols_provider: SymbolsProvider,
+    formatting_provider: FormattingProvider,
 }
 
 impl Backend {
@@ -38,6 +40,7 @@ impl Backend {
             hover_provider: HoverProvider::new(),
             definition_provider: DefinitionProvider::new(workspace_index),
             symbols_provider: SymbolsProvider::new(),
+            formatting_provider: FormattingProvider::new(),
         }
     }
 }
@@ -65,6 +68,7 @@ impl LanguageServer for Backend {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 definition_provider: Some(OneOf::Left(true)),
                 document_symbol_provider: Some(OneOf::Left(true)),
+                document_formatting_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
         })
@@ -207,6 +211,29 @@ impl LanguageServer for Backend {
             }
         } else {
             tracing::warn!("Document not found in cache for symbols: {}", uri);
+            Ok(None)
+        }
+    }
+
+    async fn formatting(
+        &self,
+        params: DocumentFormattingParams,
+    ) -> Result<Option<Vec<TextEdit>>> {
+        let uri = &params.text_document.uri;
+
+        // Get document from cache
+        if let Some(doc) = self.cache.get(uri) {
+            // Get formatting edits from provider
+            let edits = self.formatting_provider.format(&doc.content);
+
+            tracing::debug!(
+                "Providing {} formatting edits",
+                edits.as_ref().map(|e| e.len()).unwrap_or(0)
+            );
+
+            Ok(edits)
+        } else {
+            tracing::warn!("Document not found in cache for formatting: {}", uri);
             Ok(None)
         }
     }

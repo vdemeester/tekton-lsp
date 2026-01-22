@@ -9,3 +9,4 @@ pub mod hover;
 pub mod workspace;
 pub mod definition;
 pub mod symbols;
+pub mod formatting;
