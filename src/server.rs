@@ -4,9 +4,11 @@
 
 use crate::cache::DocumentCache;
 use crate::completion::CompletionProvider;
+use crate::definition::DefinitionProvider;
 use crate::hover::HoverProvider;
 use crate::parser;
 use crate::validator::TektonValidator;
+use crate::workspace::WorkspaceIndex;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
@@ -19,17 +21,20 @@ pub struct Backend {
     validator: TektonValidator,
     completion_provider: CompletionProvider,
     hover_provider: HoverProvider,
+    definition_provider: DefinitionProvider,
 }
 
 impl Backend {
     /// Create a new Backend instance with the given client.
     pub fn new(client: Client) -> Self {
+        let workspace_index = WorkspaceIndex::new();
         Self {
             client,
             cache: DocumentCache::new(),
             validator: TektonValidator::new(),
             completion_provider: CompletionProvider::new(),
             hover_provider: HoverProvider::new(),
+            definition_provider: DefinitionProvider::new(workspace_index),
         }
     }
 }
@@ -55,6 +60,7 @@ impl LanguageServer for Backend {
                     ..Default::default()
                 }),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
+                definition_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
         })
@@ -134,6 +140,41 @@ impl LanguageServer for Backend {
         }
     }
 
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        let uri = &params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+
+        // Get document from cache
+        if let Some(doc) = self.cache.get(uri) {
+            // Parse the document
+            match parser::parse_yaml(&uri.to_string(), &doc.content) {
+                Ok(yaml_doc) => {
+                    // Get definition from provider
+                    let definition = self.definition_provider.provide_definition(&yaml_doc, position);
+
+                    tracing::debug!(
+                        "Providing definition at {}:{}: {}",
+                        position.line,
+                        position.character,
+                        definition.is_some()
+                    );
+
+                    Ok(definition)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to parse YAML for definition: {}", e);
+                    Ok(None)
+                }
+            }
+        } else {
+            tracing::warn!("Document not found in cache for definition: {}", uri);
+            Ok(None)
+        }
+    }
+
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         self.client
             .log_message(
@@ -145,10 +186,18 @@ impl LanguageServer for Backend {
         // Add document to cache
         self.cache.insert(
             params.text_document.uri.clone(),
-            params.text_document.language_id,
+            params.text_document.language_id.clone(),
             params.text_document.version,
-            params.text_document.text,
+            params.text_document.text.clone(),
         );
+
+        // Index document for go-to-definition
+        if let Err(e) = self.definition_provider.index().index_document(
+            &params.text_document.uri,
+            &params.text_document.text,
+        ) {
+            tracing::warn!("Failed to index document: {}", e);
+        }
 
         // Parse and validate the document
         if let Some(doc) = self.cache.get(&params.text_document.uri) {
@@ -211,6 +260,16 @@ impl LanguageServer for Backend {
             params.content_changes,
         );
 
+        // Re-index document for go-to-definition
+        if let Some(doc) = self.cache.get(&params.text_document.uri) {
+            if let Err(e) = self.definition_provider.index().index_document(
+                &params.text_document.uri,
+                &doc.content,
+            ) {
+                tracing::warn!("Failed to re-index document: {}", e);
+            }
+        }
+
         // Re-validate after change
         if let Some(doc) = self.cache.get(&params.text_document.uri) {
             match parser::parse_yaml(&params.text_document.uri.to_string(), &doc.content) {
@@ -258,6 +317,9 @@ impl LanguageServer for Backend {
                 format!("Document closed: {}", params.text_document.uri),
             )
             .await;
+
+        // Remove document from workspace index
+        self.definition_provider.index().remove_document(&params.text_document.uri);
 
         // Remove document from cache
         self.cache.remove(&params.text_document.uri);

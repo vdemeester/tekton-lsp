@@ -6,3 +6,5 @@ pub mod parser;
 pub mod validator;
 pub mod completion;
 pub mod hover;
+pub mod workspace;
+pub mod definition;

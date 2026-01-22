@@ -1,9 +1,11 @@
 mod cache;
 mod completion;
+mod definition;
 mod hover;
 mod parser;
 mod server;
 mod validator;
+mod workspace;
 
 use clap::Parser;
 use server::Backend;
